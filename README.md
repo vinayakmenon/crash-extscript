@@ -13,13 +13,17 @@ Another use can be to execute a series of predefined crash commands,
 parse it to get relevant info and to generate a bug report.
 
 A brief on the components in this package.
+
 (1) A crash utility extension called 'extscript'.
     This provides a crash command of the same name.
+
 (2) A script. perlfc.pl is an example script, which can talk to
     extscript extension. This script can be used as an example
     to write utilities that can talk to extscript extension.
+
 (3) A protocol definition, for communication
    between 'extscript' and the external script.
+
 
 The external script is run as a server by crash utility, when you
 invoke the extscript command.
@@ -29,14 +33,22 @@ command line. In other words, we talk to the script from within
 the crash utility command line.
 
 An example.
+
 (1) Copy the extscript.c to extensions folder
+
 (2) make extensions
+
 (3) Copy perlfc.pl to crash directory.
 
+
 crash> extend extensions/extscript.so
+
 crash> extscript -f perl -a perl -a ./perlfc.pl
+
 crash> extscript -b vmallocinfo
+
 crash> extscript -b help
+
 
 The first command loads the extscript module and adds the
 command "extscript" to crash utility.
@@ -66,71 +78,115 @@ generate useful outputs, which takes time when done manually
 through crash command line.
 
 A generic use case can be something of this sort.
+
 (1) Write a funtion in the script which obeys the protocol.
+
 (2) The funtion sends a "crash utility command" to crash utility.
+
 (3) The crash utility client (extscript) receives it and executes it.
+
 (4) The output is written to ./command.out.
+
 (5) This script parses the output and takes out what it needs.
+
 (6) From what it has derived from (5), sends the next command to crash
    utility. This goes on.
+
 
 perlf.pl can be considered as a reference to implement new scripts,
 and to understand the protocol (see c_bind funtion).
 
 How to add a new command ?:
+
 Add the following to the "bypass_commands" table.
+
 (1) command tag to be set as argument to perlfc,
+
 (2) help
+
 (3) the corresponding funtion address.
+
 Done.
+
 A good example can be the vmallocinfo implementation in
 perlfc.pl
 
 Output example:
+
 The "vmallocinfo" command gives an output like shown below.
 
 -----------------8<-----------------------------------------------------------------------------------------------
+
 crash> extscript -b vmallocinfo
+
 Generating vmallocinfo(address range, size, caller)...
-bf000000 - bf04f000              323584                                             module_alloc_update_bounds+0x1c
-bf05f000 - bf064000               20480                                             module_alloc_update_bounds+0x1c
-f0002000 - f0004000                8192                                                 NewVMallocLinuxMemArea+0xf0
-f0004000 - f0045000              266240                                                            atomic_pool_init
+
+bf000000 - bf04f000              323584     module_alloc_update_bounds+0x1c
+
+bf05f000 - bf064000               20480     module_alloc_update_bounds+0x1c
+
+f0002000 - f0004000                8192     NewVMallocLinuxMemArea+0xf0
+
+f0004000 - f0045000              266240     atomic_pool_init
+
 
 ......
 
+
 ----------------------------------->8------------------------------------------------------------------------------
 
+
 General rules:
+
 All scripts must implement a help command.
+
 All scripts must implement a SIGINT signal handler. In the handler
 necessary cleanup has to be performed before exit.
 
+
 Protocol between crash and perlfc:
+
 The socket should match that of crash utility ("extscriptfcsocket").
 
+
 Notes on terminology:
+
      p->c : perl to crash
+     
      c->p : crash to perl
+     
 
 (1) Every command send by crash must be
     acked by perl (including an ACK from crash).
+
 (2) crash will not send an ACK for an ACK.
+
 (3) If a crash utility command has to be send to crash
     for execution, it has to be in the following format.
     ACKs not specified.
 
+
    p->c: "EXECUTECOMMAND"
+
    p->c: command split
+
    p->c: "ENDOFCOMMAND"
+
    c->p: "COMMANDEXECUTED"
 
+
 EXAMPLE: "kmem -i"
+
    p->c: "EXECUTECOMMAND"
+
    p->c: "kmem"
+
    p->c: "-i"
+
    p->c: "ENDOFCOMMAND"
+
    c->p: "COMMANDEXECUTED"
+
 
 Currently the output of crash is received via ./command.out
 and not through the socket.
