@@ -418,6 +418,7 @@ static void extscript_unbind(void)
 	send_command("SHUTDOWN");
 	waitpid(extscriptfc_pid, &status, 0);
 	close(fd_sock_comm);
+	unlink(EXTSCRIPTFC_SOCKET);
 }
 
 static int extscript_bind(void)
