@@ -240,17 +240,21 @@ static void execute_crash_command(void)
 		memcpy(pc->main_loop_env, saved_jmp_buf, sizeof(jmp_buf));
 		fflush(stdout);
 		dup2(bak, 1);
-		close(bak);
-		fclose(ofile);
 		pc->ofile = NULL;
+		close(bak);
 		fp = stdout;
 		cleanup();
 		kill(extscriptfc_pid, SIGINT);
 		waitpid(extscriptfc_pid, &status, 0);
+		fclose(ofile);
+		unlink(COMMAND_OUT_FILE);
+		close(fd_sock_comm);
+		unlink(EXTSCRIPTFC_SOCKET);
 		longjmp(pc->main_loop_env, 1);
 	}
 
 	exec_command();
+	memcpy(pc->main_loop_env, saved_jmp_buf, sizeof(jmp_buf));
 
 	fflush(stdout);
 	dup2(bak, 1);

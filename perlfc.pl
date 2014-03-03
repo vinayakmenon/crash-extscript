@@ -108,8 +108,6 @@ my $last_command;
 my $command_begin;
 
 sub cleanup {
-	unlink($perlfc_socket_path);
-	unlink($command_out);
 	unlink($raw_bug_report);
 }
 
