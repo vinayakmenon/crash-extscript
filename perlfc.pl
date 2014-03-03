@@ -329,6 +329,40 @@ sub send_commands_list
 	}
 }
 
+sub open_command
+{
+	my $count = 0;
+	my $line;
+	my $com;
+	my $rdfd;
+
+	send_command("EXECUTECOMMAND");
+	foreach my $arg (@_) {
+		if (!$count) {
+			$line = $_[0];
+			$count++;
+			next;
+		}
+		send_command($_[$count]);
+		$count++;
+	}
+	send_command("ENDOFCOMMAND");
+
+	$com = <$perlfc_sock>;
+	if ($com eq "COMMANDEXECUTED") {
+		send_command("ACK");
+		open($rdfd, "<", $command_out)
+			or perlfc_error($line);
+	} else {perlfc_error($line);}
+
+	return $rdfd;
+}
+
+sub close_command
+{
+	close $_[0];
+}
+
 sub exec_bypass
 {
 	my $com;
@@ -596,60 +630,14 @@ sub f_valtext
 
 	system($objcopy_string);
 
-=pod
-	send_command("EXECUTECOMMAND");
-	send_command("sym");
-	send_command("_text");
-	send_command("ENDOFCOMMAND");
-
-	$com = <$perlfc_sock>;
-	if ($com eq "COMMANDEXECUTED") {
-		send_command("ACK");
-		open($rdfd, "<", $command_out)
-			or perlfc_error(__LINE__);
-		$line = <$rdfd>;
-		@arr = split(/ /, $line);
-		$_text = $arr[0];
-		print "p:text:".$_text."\n";
-		close($rdfd);
-	} else perlfc_error(__LINE__);
-
-	send_command("EXECUTECOMMAND");
-	send_command("sym");
-	send_command("_etext");
-	send_command("ENDOFCOMMAND");
-
-	$com = <$perlfc_sock>;
-	if ($com eq "COMMANDEXECUTED") {
-		send_command("ACK");
-		open($rdfd, "<", $command_out)
-			or perlfc_error(__LINE__);
-		$line = <$rdfd>;
-		@arr = split(/ /, $line);
-		$_etext = $arr[0];
-		print "p:etext:".$_etext."\n";
-		close($rdfd);
-	} else perlfc_error(__LINE__);
-=cut
-	send_command("EXECUTECOMMAND");
-	send_command("rd");
-	send_command($_text);
-	send_command("-e");
-	send_command($_etext);
-	send_command("-r");
-	send_command($rawtextpath);
-	send_command("ENDOFCOMMAND");
-
-	$com = <$perlfc_sock>;
-	if ($com eq "COMMANDEXECUTED") {
-		send_command("ACK");
-		if (compare($rawtextpath, $vmlinux_text) == 0) {
-			print "The text section is intact\n";
-		} else {
-			print "ERROR: text section of ramdump".
-				" not matching with vmlinux text\n";
-		}
-	} else {perlfc_error(__LINE__);}
+	$rdfd = open_command(__LINE__, "rd", $_text, "-e", $_etext, "-r", $rawtextpath);
+	close_command($rdfd);
+	if (compare($rawtextpath, $vmlinux_text) == 0) {
+		print "The text section is intact\n";
+	} else {
+		print "ERROR: text section of ramdump".
+			" not matching with vmlinux text\n";
+	}
 
 	# rodata compare
 	$objcopy_string = $tools_path."/"."arm-eabi-objcopy ".
@@ -659,25 +647,14 @@ sub f_valtext
 
 	system($objcopy_string);
 
-	send_command("EXECUTECOMMAND");
-	send_command("rd");
-	send_command($_rodata);
-	send_command("-e");
-	send_command($_erodata);
-	send_command("-r");
-	send_command($rawtextpath);
-	send_command("ENDOFCOMMAND");
-
-	$com = <$perlfc_sock>;
-	if ($com eq "COMMANDEXECUTED") {
-		send_command("ACK");
-		if (compare($rawtextpath, $vmlinux_text) == 0) {
-			print "The rodata section is intact\n";
-		} else {
-			print "ERROR: rodata section of ramdump".
-				" not matching with vmlinux rodata\n";
-		}
-	} else {perlfc_error(__LINE__);}
+	$rdfd = open_command(__LINE__, "rd", $_rodata, "-e", $_erodata, "-r", $rawtextpath);
+	close_command($rdfd);
+	if (compare($rawtextpath, $vmlinux_text) == 0) {
+		print "The rodata section is intact\n";
+	} else {
+		print "ERROR: rodata section of ramdump".
+			" not matching with vmlinux rodata\n";
+	}
 
 	unlink($rawtextpath);
 	unlink($readelf_temp);
