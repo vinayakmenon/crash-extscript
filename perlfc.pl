@@ -182,16 +182,19 @@ my @commands = (
 
 # Add all new commands here.
 my @bypass_commands = (
-	["bugreport",	\&f_bugreport,	"Generates bug_report.txt in the current folder\n".
-					"eg:\n".
-					"perlfc -b bugreport\n"],
-	["valtext",	\&f_valtext,	"Compares the .text and .rodata sections of ramdump and vmlinux\n".
-					"Only for arm\n".
-					"Pass the toochain path as comma seperated argument.\n".
-					"eg:\n".
-					"perlfc -b valtext,/home/toochain/arm-eabi/bin/\n"],
-	["help",	\&f_help,	"Displays this help\n".
-					"perlfc -b help\n"],
+	["bugreport",	\&f_bugreport,		"Generates bug_report.txt in the current folder\n".
+						"usage:\n".
+						"extscript -b bugreport\n"],
+	["vmallocinfo", \&f_vmallocinfo,	"Disaplays vmallocinfo similar to /proc/vmallocinfo\n".
+						"usage:\n".
+						"extscript -b vmallocinfo\n"],
+	["valtext",	\&f_valtext,		"Compares the .text and .rodata sections of ramdump and vmlinux\n".
+						"Only for arm\n".
+						"Pass the toochain path as comma seperated argument.\n".
+						"usage:\n".
+						"extscript -b valtext,/home/toochain/arm-eabi/bin/\n"],
+	["help",	\&f_help,		"Displays this help\n".
+						"extscript -b help\n"],
 );
 
 # The socket to communicate with
@@ -548,6 +551,55 @@ sub f_bugreport
 
 	print "Dont worry about the \"dummy\" command error\n";
 	print "Bug report (bug_report.txt) created in the current folder\n";
+}
+
+sub f_vmallocinfo
+{
+	my $rdfd;
+	my $line;
+	my $tmpfd;
+
+	print "Generating vmallocinfo(address range, size, caller)...\n";
+
+	$rdfd = open_command(__LINE__, "set", "radix", "16");
+	close_command($rdfd);
+
+	$rdfd = open_command(__LINE__, "kmem", "-v");
+
+	open($tmpfd, "+>", "./temp")
+		or perlfc_error(__LINE__);
+
+	while($line = <$rdfd>) {
+		print $tmpfd $line;
+	}
+
+	seek $tmpfd, 0,SEEK_SET;
+	close_command($rdfd);
+
+	# skip the first line
+	$line = <$tmpfd>;
+	while ($line = <$tmpfd>) {
+		my @divide = split(' ', $line);
+		#print "$divide[0], $divide[1], $divide[2], $divide[3], $divide[4], $divide[5]\n";
+
+		$rdfd = open_command(__LINE__, "struct", "vm_struct.caller", $divide[1]);
+		$line = <$rdfd>;
+		my @divide1 = split(' ', $line);
+		#print "$divide1[0], $divide1[1], $divide1[2], $divide1[3], $divide1[4], $divide1[5]\n";
+		close_command($rdfd);
+
+		$rdfd = open_command(__LINE__, "sym", $divide1[2]);
+		$line = <$rdfd>;
+		my @divide2 = split(' ', $line);
+		if ($divide2[1] eq "invalid") {
+			$divide2[2] = 0;
+		}
+
+		printf "%s - %s\t%15s\t%75s\n", $divide[2], $divide[4], $divide[5], $divide2[2];
+		close_command($rdfd);
+	}
+
+	close($tmpfd);
 }
 
 sub f_valtext
