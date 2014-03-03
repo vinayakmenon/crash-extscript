@@ -33,12 +33,12 @@
 #define DONE 2
 #define CONNECT_RETRIES 10000
 
-static int extscriptfc_debug = 0;
+static int extscriptfc_debug;
 #define DEBUG(args...)				\
 	do {					\
-		if(extscriptfc_debug)		\
+		if (extscriptfc_debug)		\
 			fprintf(stdout, args);	\
-	} while(0)				\
+	} while (0)				\
 
 #define MAX_ARGS 2
 #define MAX_ARG_SIZE 200
@@ -54,7 +54,7 @@ static pid_t extscriptfc_pid;
 static struct sockaddr_un local;
 static jmp_buf saved_jmp_buf;
 
-static int send_command(const char* com);
+static int send_command(const char *com);
 static int extscript_bind(void);
 static void extscript_unbind(void);
 static int wait_and_process_command(void);
@@ -100,9 +100,8 @@ void cmd_extscript(void)
 	int len;
 	int arg_cnt = 0;
 
-        while ((c = getopt(argcnt, args, "b:f:a:")) != EOF) {
-                switch(c)
-		{
+	while ((c = getopt(argcnt, args, "b:f:a:")) != EOF) {
+		switch (c) {
 		case 'b':
 			/* bypass command */
 			bflag = 1;
@@ -124,7 +123,8 @@ void cmd_extscript(void)
 			if (arg_cnt < MAX_ARGS) {
 				len = strlen(optarg) + 1;
 				if (len > MAX_ARG_SIZE) {
-					error(INFO, "arg not allowed to be > %d\n",
+					error(INFO,
+						"arg not allowed to be > %d\n",
 						MAX_ARG_SIZE);
 					return;
 				}
@@ -180,7 +180,7 @@ void cmd_extscript(void)
 	extscript_unbind();
 }
 
-static int send_command(const char* com)
+static int send_command(const char *com)
 {
 	size_t size = 0;
 	DEBUG("sc: %s\n", com);
@@ -205,20 +205,21 @@ static void cleanup(void)
 {
 	int i;
 
-	close(fd_sock_comm);
 	bflag = 0;
-	for(i = 0; comm[i]; i++)
+	for (i = 0; comm[i]; i++) {
 		free(comm[i]);
+		comm[i] = NULL;
+	}
 }
 
 static void execute_crash_command(void)
 {
 	int bak;
 	int status;
-	FILE* old_fp = fp;
+	FILE *old_fp = fp;
 
-	if ((ofile =
-		fopen(COMMAND_OUT_FILE, "w+")) == NULL) {
+	ofile = fopen(COMMAND_OUT_FILE, "w+");
+	if (!ofile) {
 		error(INFO, "unable to open %s\n", COMMAND_OUT_FILE);
 		return;
 	}
@@ -269,7 +270,7 @@ static int crash_receive_execute_command(void)
 	memset(comm, 0, MAX_COMMAND_SPLIT);
 	DEBUG("%s, %d\n", __func__, __LINE__);
 
-	for(i = 0, argcnt = 0, (ret = recv(fd_sock_comm,
+	for (i = 0, argcnt = 0, (ret = recv(fd_sock_comm,
 			command, MAX_COMMAND_SIZE - 1, 0)),
 		send_command("ACK");
 		(strncmp(command, "ENDOFCOMMAND", 12)) && (ret > -1);
@@ -277,7 +278,7 @@ static int crash_receive_execute_command(void)
 			send_command("ACK"), i++) {
 
 		command[ret] = '\0';
-		comm[i] = (char*)malloc(MAX_COMMAND_SIZE);
+		comm[i] = (char *)malloc(MAX_COMMAND_SIZE);
 		if (!comm[i]) {
 			error(INFO, "malloc failed\n");
 			ret = -1;
@@ -307,7 +308,7 @@ static int crash_receive_execute_command(void)
 	ret = 0;
 
 error:
-	for(i = 0; comm[i]; i++)
+	for (i = 0; comm[i]; i++)
 		free(comm[i]);
 
 	return ret;
@@ -324,7 +325,8 @@ static int wait_and_process_command(void)
 	/* Note that we expect a single string command
 	 * without space.
 	 */
-	if (0 > (ret = recv(fd_sock_comm, command, MAX_COMMAND_SIZE - 1, 0))) {
+	ret = recv(fd_sock_comm, command, MAX_COMMAND_SIZE - 1, 0);
+	if (0 > ret) {
 		error(INFO, "recv failed %s\n", strerror(errno));
 		return -1;
 	}
@@ -364,7 +366,8 @@ static int wait_and_process_command(void)
 
 		shutdown(fd_sock_comm, SHUT_RD);
 		close(fd_sock_comm);
-		if ((fd_sock_comm = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		fd_sock_comm = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (fd_sock_comm  == -1) {
 			error(INFO, "failed to create socket\n");
 			return -1;
 		}
@@ -398,7 +401,7 @@ static void extscript_process(void)
 		send_command(bypass_arg);
 	}
 
-	while(1) {
+	while (1) {
 		ret = wait_and_process_command();
 		if (ret)
 			break;
@@ -419,7 +422,8 @@ static int extscript_bind(void)
 
 	/* Create unix domain socket: comms b/w extscript and external ecript */
 
-	if ((fd_sock_comm = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	fd_sock_comm = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd_sock_comm  == -1) {
 		error(INFO, "failed to create socket\n");
 		return -1;
 	}
@@ -428,7 +432,8 @@ static int extscript_bind(void)
 	strcpy(local.sun_path, EXTSCRIPTFC_SOCKET);
 
 	/* Create a process to run extscript */
-	if ((extscriptfc_pid = fork()) < 0) {
+	extscriptfc_pid = fork();
+	if (extscriptfc_pid < 0) {
 		error(INFO, "fork of extscriptfc failed\n");
 		return -1;
 	}
@@ -436,7 +441,8 @@ static int extscript_bind(void)
 	if (extscriptfc_pid > 0) {
 		sleep(1);
 		len = strlen(local.sun_path) + sizeof(local.sun_family);
-		if (connect(fd_sock_comm, (struct sockaddr *)&local, len) == -1) {
+		if (connect(fd_sock_comm,
+				(struct sockaddr *)&local, len) == -1) {
 			error(INFO, "connect failed\n");
 			return -1;
 		}
