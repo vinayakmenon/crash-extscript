@@ -1,6 +1,6 @@
 /* extscript.c - external script support for crash
  *
- * Copyright (C) 2013 Vinayak Menon<vinayakm.list@gmail.com>.
+ * Copyright (C) 2014 Vinayak Menon<vinayakm.list@gmail.com>.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
