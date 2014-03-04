@@ -497,7 +497,7 @@ sub f_valtext
 	my @arr;
 	my $_text;
 	my $_etext;
-	my $_rodata;
+	my $_rodata = "NULL";
 	my $_erodata;
 	my $rawtextpath = "./rawtext.bin";
 	my $readelf_temp = "./readelf.txt";
@@ -554,6 +554,14 @@ sub f_valtext
 	} else {
 		print "ERROR: text section of ramdump".
 			" not matching with vmlinux text\n";
+		print "please check the diff between $rawtextpath".
+			" and $vmlinux_text for more info!\n";
+		goto error;
+	}
+
+	if ($_rodata eq "NULL") {
+		print "rodata section absent. Skipping check\n";
+		goto end;
 	}
 
 	# rodata compare
@@ -571,9 +579,14 @@ sub f_valtext
 	} else {
 		print "ERROR: rodata section of ramdump".
 			" not matching with vmlinux rodata\n";
+		print "please check the diff between $rawtextpath".
+			" and $vmlinux_text for more info!\n";
+		goto error;
 	}
 
+end:
 	unlink($rawtextpath);
-	unlink($readelf_temp);
 	unlink($vmlinux_text);
+error:
+	unlink($readelf_temp);
 }
