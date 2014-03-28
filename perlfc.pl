@@ -442,6 +442,7 @@ sub f_vmallocinfo
 	my $rdfd;
 	my $line;
 	my $tmpfd;
+	my $total_used = 0;
 
 	print "Generating vmallocinfo(address range, size, caller)...\n";
 
@@ -480,8 +481,11 @@ sub f_vmallocinfo
 		}
 
 		printf "%s - %s\t%15s\t%75s\n", $divide[2], $divide[4], $divide[5], $divide2[2];
+		$total_used += $divide[5];
 		close_command($rdfd);
 	}
+
+	print "\nTotal:$total_used\n";
 
 	close($tmpfd);
 }
