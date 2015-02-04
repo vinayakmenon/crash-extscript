@@ -79,6 +79,10 @@ my @bypass_commands = (
 						"Pass the toochain path as comma seperated argument.\n".
 						"usage:\n".
 						"extscript -b valtext,/home/toochain/arm-eabi/bin/\n"],
+	["regulator",	\&f_regulator,		"Display regulators\n".
+						"usage:\n".
+						"extscript -b regulator\n"],
+
 	["help",	\&f_help,		"Displays this help\n".
 						"extscript -b help\n"],
 );
@@ -593,4 +597,60 @@ end:
 	unlink($vmlinux_text);
 error:
 	unlink($readelf_temp);
+}
+
+sub f_regulator
+{
+	my $rdfd = open_command(__LINE__, "list", "regulator_dev.list", "-H", "regulator_list");
+	my $line;
+	my $tmpfd;
+
+	open($tmpfd, "+>", "./temp")
+		or perlfc_error(__LINE__);
+
+	my @brfd;
+	open($brfd, ">", "regulator.txt")
+		or perlfc_error(__LINE__);
+
+	while($line = <$rdfd>) {
+		print $tmpfd $line;
+	}
+
+	seek $tmpfd, 0,SEEK_SET;
+	close_command($rdfd);
+
+	# Add more elements if required
+	@element_array = ('use_count', 'open_count');
+
+	while ($line = <$tmpfd>) {
+		$reg_dev_addr = $line;
+		print "$line";
+		print $brfd "===========\n";
+
+		# get size of array
+		my $array_size = @element_array;
+
+		while ($array_size != 0) {
+			$rdfd = open_command(__LINE__, "struct", "regulator_dev.$element_array[$array_size - 1]", $reg_dev_addr);
+			$line = <$rdfd>;
+			print $brfd "$line";
+			close_command($rdfd);
+			--$array_size;
+		}
+
+		$rdfd = open_command(__LINE__, "struct", "regulator_dev.desc", $reg_dev_addr);
+		$desc_line = <$rdfd>;
+		my @desc_divide = split(' ', $desc_line);
+		close_command($rdfd);
+		print $brfd $desc_line;
+
+		$rdfd = open_command(__LINE__, "struct", "regulator_desc.name", $desc_divide[2]);
+		$desc_name_line = <$rdfd>;
+		print $brfd "$desc_name_line";
+		close_command($rdfd);
+	}
+
+	close($brfd);
+	close($tmpfd);
+	return;
 }
