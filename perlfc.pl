@@ -629,6 +629,7 @@ sub f_regulator
 		$reg_dev_addr = $line;
 		print "$line";
 		print $brfd "===========\n";
+		print $brfd "regulator_dev =  0x$reg_dev_addr";
 
 		# get size of array
 		my $array_size = @element_array;
