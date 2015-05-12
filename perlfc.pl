@@ -82,6 +82,9 @@ my @bypass_commands = (
 	["regulator",	\&f_regulator,		"Display regulators\n".
 						"usage:\n".
 						"extscript -b regulator\n"],
+	["devfreq",	\&f_devfreq,		"Display devfreq devices\n".
+						"usage:\n".
+						"extscript -b devfreq\n"],
 
 	["help",	\&f_help,		"Displays this help\n".
 						"extscript -b help\n"],
@@ -652,5 +655,96 @@ sub f_regulator
 
 	close($brfd);
 	close($tmpfd);
+	return;
+}
+
+# remove the brackets from address eg:[eac568b0]
+# This function remove first and last characters.
+sub f_rem_brackets
+{
+	my $str = $_[0];
+	chop ($str);
+	$str = reverse($str);
+	chop ($str);
+	return reverse($str);
+}
+
+sub f_devfreq_print_name
+{
+	my $rdfd = open_command(__LINE__, "struct", "devfreq.dev", $_[0], "-o");
+	#ignore first line of o/p
+	my $line = <$rdfd>;
+	$line = <$rdfd>;
+	@desc_divide = split(' ', $line);
+
+	$dev_addr = f_rem_brackets $desc_divide[0];
+#	print $dev_addr, "\n";
+
+	close_command($rdfd);
+
+	$rdfd = open_command(__LINE__, "struct", "device.kobj", $dev_addr, "-o");
+	#ignore first line of o/p
+	$line = <$rdfd>;
+	$line = <$rdfd>;
+	@desc_divide = split(' ', $line);
+
+	# remove the brackets from address eg:[eac568b0]
+	$kobj_addr = f_rem_brackets $desc_divide[0];
+#	print $kobj_addr, "\n";
+
+	close_command($rdfd);
+
+	$rdfd = open_command(__LINE__, "struct", "kobject.name", $kobj_addr);
+	$line = <$rdfd>;
+	@desc_divide = split(' ', $line);
+#	print "device:", $desc_divide[3], "\n";
+
+	close_command($rdfd);
+	return $desc_divide[3];
+}
+
+sub f_devfreq
+{
+	my $line;
+	my $devfreq_list_addr;
+	my @brfd;
+	open($brfd, ">", "devfreq.txt")
+		or perlfc_error(__LINE__);
+
+	my $rdfd = open_command(__LINE__, "p", "'devfreq.c'::devfreq_list");
+	# ignore first line
+	$line = <$rdfd>;
+	$line = <$rdfd>;
+
+	my @desc_divide = split(' ', $line);
+	@desc_divide = split(',',$desc_divide[2]);
+	$devfreq_list_addr = $desc_divide[0];
+
+	close_command($rdfd);
+
+	# Add more elements if required
+	@element_array = ('governor_name', 'min_freq', 'max_freq', 'previous_freq');
+
+	my $list = open_command(__LINE__, "list", $devfreq_list_addr);
+	close_command($rdfd);
+	while ($line = <$list>) {
+		$devfreq_devname = f_devfreq_print_name $line;
+
+		# get size of array
+		my $array_size = @element_array;
+
+		print $brfd "=========================\n";
+		print $brfd "device: ", $devfreq_devname, "\n";
+		while ($array_size != 0) {
+			$rdfd = open_command(__LINE__, "struct", "devfreq.$element_array[$array_size - 1]", $line);
+			$entry = <$rdfd>;
+			print $brfd "$entry";
+			print "$entry";
+			close_command($rdfd);
+			--$array_size;
+		}
+	}
+
+	close($brfd);
 	return;
 }
